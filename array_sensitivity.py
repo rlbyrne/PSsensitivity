@@ -154,7 +154,7 @@ def uvn_to_cosmology_axis_transform(
     # Perpendicular to the line-of-sight conversion
     kperp_conv_factor = get_kperp_conversion_factor(avg_freq_hz)
     kx = kperp_conv_factor * u_coords_wl
-    ky = kperp_conv_factor * u_coords_wl
+    ky = kperp_conv_factor * v_coords_wl
 
     return kx, ky, kz
 
@@ -200,14 +200,14 @@ def get_wedge_mask_array(
     uv_dist_s = (
         np.sqrt(np.abs(baselines_m[:, 0]) ** 2.0 + np.abs(baselines_m[:, 1]) ** 2.0) / c
     )
-    delay_array_lower_bounds = [
+    delay_array_lower_bounds = np.array([
         np.mean([delay_array_s[ind], delay_array_s[ind + 1]])
         for ind in range(len(delay_array_s) - 1)
-    ]
+    ])
     # Add the lower bound for the lowest delay bin
-    delay_array_lower_bounds = np.array(
-        [delay_array_s[0] - (delay_array_s[1] - delay_array_s[0]) / 2]
-        + delay_array_lower_bounds
+    delay_array_lower_bounds = np.append(
+        np.array([delay_array_s[0] - (delay_array_s[1] - delay_array_s[0]) / 2]),
+        delay_array_lower_bounds
     )
 
     wedge_dist = (
@@ -363,14 +363,12 @@ def get_sample_variance(
     wedge_mask_array = np.reshape(
         wedge_mask_array, (len(u_coords_wl), len(v_coords_wl), len(delay_array_s))
     )
-    print(np.shape(wedge_mask_array))
 
     distance_mat = np.sqrt(
         np.abs(kx[:, np.newaxis, np.newaxis]) ** 2.0
         + np.abs(ky[np.newaxis, :, np.newaxis]) ** 2.0
         + np.abs(kz[np.newaxis, np.newaxis, :]) ** 2.0
     )
-    print(np.shape(distance_mat))
     sample_variance_cube = np.interp(distance_mat, model_k_axis, ps_model)
 
     n_kbins = len(k_bin_edges) - 1
