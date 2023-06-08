@@ -352,7 +352,7 @@ def get_sample_variance(
     )
 
     # Get wedge masking
-    u_coords_meshed, v_coords_meshed = np.meshgrid(u_coords_wl, v_coords_wl)
+    v_coords_meshed, u_coords_meshed = np.meshgrid(v_coords_wl, u_coords_wl)
     uv_locs = np.stack((u_coords_meshed.flatten(), v_coords_meshed.flatten()), axis=-1)
     uv_locs_m = uv_locs * c / np.mean(freq_array_hz)
     wedge_mask_array = get_wedge_mask_array(
