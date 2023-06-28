@@ -307,6 +307,8 @@ def delay_ps_sensitivity_analysis(
         + np.abs(kz[np.newaxis, :]) ** 2.0
     )
     binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
+    true_bin_edges = np.full((n_kbins, 2), np.nan, dtype=float)
+    true_bin_centers = np.full(n_kbins, np.nan, dtype=float)
     for bin in range(n_kbins):
         use_values = np.where(
             (distance_mat > k_bin_edges_1d[bin])
@@ -314,12 +316,18 @@ def delay_ps_sensitivity_analysis(
             & wedge_mask_array
         )
         nsamples[bin] = len(use_values[0])
+        if nsamples[bin] > 0:
+            true_bin_edges[bin, 0] = np.min(distance_mat[use_values])
+            true_bin_edges[bin, 1] = np.max(distance_mat[use_values])
+            true_bin_centers[bin] = np.mean(distance_mat[use_values])
 
     binned_ps_variance = ps_variance / nsamples
 
     return (
         nsamples,
         binned_ps_variance,
+        true_bin_edges,
+        true_bin_centers,
         nsamples_2d,
         binned_ps_variance_2d,
     )
