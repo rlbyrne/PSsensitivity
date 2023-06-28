@@ -251,9 +251,10 @@ def delay_ps_sensitivity_analysis(
 
     antpos = get_antpos(antpos_filepath)
     baselines_m = get_baselines(antpos)
-    baselines_m = baselines_m[
-        np.where(np.sqrt(np.sum(np.abs(baselines_m) ** 2.0, axis=1)) < max_bl_m)[0], :
-    ]
+    if max_bl_m is not None:
+        baselines_m = baselines_m[
+            np.where(np.sqrt(np.sum(np.abs(baselines_m) ** 2.0, axis=1)) < max_bl_m)[0], :
+        ]
     if zenith_angle != 0:
         baselines_m[:, 0] *= np.cos(np.radians(zenith_angle))
     wavelength = c / mean_freq_hz
