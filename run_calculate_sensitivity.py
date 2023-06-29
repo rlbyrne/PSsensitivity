@@ -18,6 +18,7 @@ int_time_s = 15.0 * 60  # 15 minutes in each survey field
 max_bl_m = None
 
 antpos = array_sensitivity.get_antpos(antpos_filepath)
+baselines_m = array_sensitivity.get_baselines(antpos)
 
 freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
 delay_array_s = np.fft.fftshift(
