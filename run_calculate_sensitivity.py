@@ -26,6 +26,8 @@ delay_array_s = np.fft.fftshift(
 )
 kpar_conv_factor = array_sensitivity.get_kpar_conversion_factor(freq_hz)
 max_kpar = kpar_conv_factor * np.max(delay_array_s)
+
+kperp_conv_factor = array_sensitivity.get_kperp_conversion_factor(freq_hz)
 max_baseline_wl = np.max(np.sqrt(np.sum(baselines_m**2.0, axis=1))) * max_freq_hz / c
 max_kperp = kperp_conv_factor * max_baseline_wl
 max_k = np.sqrt(max_kpar**2.0 + max_kperp**2.0)
