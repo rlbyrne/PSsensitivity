@@ -200,14 +200,16 @@ def get_wedge_mask_array(
     uv_dist_s = (
         np.sqrt(np.abs(baselines_m[:, 0]) ** 2.0 + np.abs(baselines_m[:, 1]) ** 2.0) / c
     )
-    delay_array_lower_bounds = np.array([
-        np.mean([delay_array_s[ind], delay_array_s[ind + 1]])
-        for ind in range(len(delay_array_s) - 1)
-    ])
+    delay_array_lower_bounds = np.array(
+        [
+            np.mean([delay_array_s[ind], delay_array_s[ind + 1]])
+            for ind in range(len(delay_array_s) - 1)
+        ]
+    )
     # Add the lower bound for the lowest delay bin
     delay_array_lower_bounds = np.append(
         np.array([delay_array_s[0] - (delay_array_s[1] - delay_array_s[0]) / 2]),
-        delay_array_lower_bounds
+        delay_array_lower_bounds,
     )
 
     wedge_dist = (
@@ -253,7 +255,8 @@ def delay_ps_sensitivity_analysis(
     baselines_m = get_baselines(antpos)
     if max_bl_m is not None:
         baselines_m = baselines_m[
-            np.where(np.sqrt(np.sum(np.abs(baselines_m) ** 2.0, axis=1)) < max_bl_m)[0], :
+            np.where(np.sqrt(np.sum(np.abs(baselines_m) ** 2.0, axis=1)) < max_bl_m)[0],
+            :,
         ]
     if zenith_angle != 0:
         baselines_m[:, 0] *= np.cos(np.radians(zenith_angle))
@@ -384,7 +387,9 @@ def get_sample_variance(
     binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
     for bin in range(n_kbins):
         use_values = np.where(
-            (distance_mat > k_bin_edges[bin]) & (distance_mat <= k_bin_edges[bin + 1]) & wedge_mask_array
+            (distance_mat > k_bin_edges[bin])
+            & (distance_mat <= k_bin_edges[bin + 1])
+            & wedge_mask_array
         )
         if len(use_values[0]) > 0:
             binned_ps_variance[bin] = (
