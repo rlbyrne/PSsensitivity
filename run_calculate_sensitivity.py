@@ -61,17 +61,12 @@ kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
     zenith_angle=0.0,
 )
 f = open("simulation_outputs/zenith_thermal_noise.npy", "wb")
-np.save(
-    f,
-    (
-        nsamples,
-        binned_ps_variance,
-        true_bin_edges,
-        true_bin_centers,
-        nsamples_2d,
-        binned_ps_variance_2d,
-    ),
-)
+np.save(f, nsamples)
+np.save(f, binned_ps_variance)
+np.save(f, true_bin_edges)
+np.save(f, true_bin_centers)
+np.save(f, nsamples_2d)
+np.save(f, binned_ps_variance_2d)
 f.close()
 
 sample_variance_cube, binned_ps_sample_variance = array_sensitivity.get_sample_variance(
@@ -85,7 +80,8 @@ sample_variance_cube, binned_ps_sample_variance = array_sensitivity.get_sample_v
     k_bin_edges=bin_edges,
 )
 f = open("simulation_outputs/sample_variance.npy", "wb")
-np.save(f, (sample_variance_cube, binned_ps_sample_variance))
+np.save(f, sample_variance_cube)
+np.save(f, binned_ps_sample_variance)
 f.close()
 
 (
@@ -111,15 +107,10 @@ f.close()
     zenith_angle=60.0,
 )
 f = open("simulation_outputs/off_zenith_thermal_noise.npy", "wb")
-np.save(
-    f,
-    (
-        nsamples_offzenith,
-        binned_ps_variance_offzenith,
-        true_bin_edges_offzenith,
-        true_bin_centers_offzenith,
-        nsamples_2d_offzenith,
-        binned_ps_variance_2d_offzenith,
-    ),
-)
+np.save(f, nsamples_offzenith)
+np.save(f, binned_ps_variance_offzenith)
+np.save(f, true_bin_edges_offzenith)
+np.save(f, true_bin_centers_offzenith)
+np.save(f, nsamples_2d_offzenith)
+np.save(f, binned_ps_variance_2d_offzenith)
 f.close()
