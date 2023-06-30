@@ -38,6 +38,7 @@ bin_edges = np.arange(0, max_k, k_bin_size)
 kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
 kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
 
+# Calculate zenith-pointed thermal noise
 (
     nsamples,
     binned_ps_variance,
@@ -69,6 +70,22 @@ np.save(f, nsamples_2d)
 np.save(f, binned_ps_variance_2d)
 f.close()
 
+# Calculate sample variance
+# Get theory PS
+f = open("camb_49591724_matterpower_z0.5.dat", "r")
+file_data = f.readlines()
+f.close()
+model_k_axis = []
+ps_model_unnorm = []
+for line in file_data:
+    model_k_axis.append(float(line.split()[0]))
+    ps_model_unnorm.append(float(line.split()[1]))
+ps_model = array_sensitivity.matter_ps_to_21cm_ps_conversion(
+    np.array(model_k_axis),
+    np.array(ps_model_unnorm),
+    0.5
+)
+# Do sample variance calculation
 sample_variance_cube, binned_ps_sample_variance = array_sensitivity.get_sample_variance(
     ps_model,  # Units mK^2
     model_k_axis,  # Units h/Mpc
@@ -84,6 +101,7 @@ np.save(f, sample_variance_cube)
 np.save(f, binned_ps_sample_variance)
 f.close()
 
+# Calculate off-zenith thermal noise
 (
     nsamples_offzenith,
     binned_ps_variance_offzenith,
