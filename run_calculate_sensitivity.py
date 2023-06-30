@@ -70,37 +70,6 @@ np.save(f, nsamples_2d)
 np.save(f, binned_ps_variance_2d)
 f.close()
 
-# Calculate sample variance
-# Get theory PS
-f = open("camb_49591724_matterpower_z0.5.dat", "r")
-file_data = f.readlines()
-f.close()
-model_k_axis = []
-ps_model_unnorm = []
-for line in file_data:
-    model_k_axis.append(float(line.split()[0]))
-    ps_model_unnorm.append(float(line.split()[1]))
-ps_model = array_sensitivity.matter_ps_to_21cm_ps_conversion(
-    np.array(model_k_axis),
-    np.array(ps_model_unnorm),
-    0.5
-)
-# Do sample variance calculation
-sample_variance_cube, binned_ps_sample_variance = array_sensitivity.get_sample_variance(
-    ps_model,  # Units mK^2
-    model_k_axis,  # Units h/Mpc
-    uv_extent=max_baseline_wl,
-    field_of_view_deg2=field_of_view_deg2,
-    min_freq_hz=min_freq_hz,
-    max_freq_hz=max_freq_hz,
-    freq_resolution_hz=freq_resolution_hz,
-    k_bin_edges=bin_edges,
-)
-f = open("simulation_outputs/sample_variance.npy", "wb")
-np.save(f, sample_variance_cube)
-np.save(f, binned_ps_sample_variance)
-f.close()
-
 # Calculate off-zenith thermal noise
 (
     nsamples_offzenith,
@@ -132,3 +101,36 @@ np.save(f, true_bin_centers_offzenith)
 np.save(f, nsamples_2d_offzenith)
 np.save(f, binned_ps_variance_2d_offzenith)
 f.close()
+
+
+if False:
+    # Calculate sample variance
+    # Get theory PS
+    f = open("camb_49591724_matterpower_z0.5.dat", "r")
+    file_data = f.readlines()
+    f.close()
+    model_k_axis = []
+    ps_model_unnorm = []
+    for line in file_data:
+        model_k_axis.append(float(line.split()[0]))
+        ps_model_unnorm.append(float(line.split()[1]))
+    ps_model = array_sensitivity.matter_ps_to_21cm_ps_conversion(
+        np.array(model_k_axis),
+        np.array(ps_model_unnorm),
+        0.5
+    )
+    # Do sample variance calculation
+    sample_variance_cube, binned_ps_sample_variance = array_sensitivity.get_sample_variance(
+        ps_model,  # Units mK^2
+        model_k_axis,  # Units h/Mpc
+        uv_extent=max_baseline_wl,
+        field_of_view_deg2=field_of_view_deg2,
+        min_freq_hz=min_freq_hz,
+        max_freq_hz=max_freq_hz,
+        freq_resolution_hz=freq_resolution_hz,
+        k_bin_edges=bin_edges,
+    )
+    f = open("simulation_outputs/sample_variance.npy", "wb")
+    np.save(f, sample_variance_cube)
+    np.save(f, binned_ps_sample_variance)
+    f.close()
