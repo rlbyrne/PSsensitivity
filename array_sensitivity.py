@@ -340,60 +340,105 @@ def delay_ps_sensitivity_analysis(
 def get_sample_variance(
     ps_model,  # Units mK^2
     model_k_axis,  # Units h/Mpc
-    uv_extent=None,
     field_of_view_deg2=None,
     min_freq_hz=None,
     max_freq_hz=None,
     freq_resolution_hz=None,
     k_bin_edges=None,
+    wedge_slope=1,
+    include_delay_cut=True,
 ):
 
     field_of_view_diameter = 2 * np.sqrt(field_of_view_deg2 / np.pi)
-    uv_spacing = 0.5 * 180 / field_of_view_diameter  # Nyquist sample the FoV
-    freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
-
-    u_coords_wl = np.arange(0, uv_extent, uv_spacing)
-    u_coords_wl = np.append(-np.flip(u_coords_wl[1:]), u_coords_wl)
-    v_coords_wl = np.arange(0, uv_extent, uv_spacing)
-
-    delay_array_s = np.fft.fftshift(
-        np.fft.fftfreq(len(freq_array_hz), d=freq_resolution_hz)
+    uv_corr_len = 90.0 / field_of_view_diameter  # Nyquist sample the FoV
+    delay_corr_len = 1 / (max_freq_hz - min_freq_hz)
+    freq_hz = np.mean([min_freq_hz, max_freq_hz])
+    kpar_conv_factor = get_kpar_conversion_factor(freq_hz)
+    kperp_conv_factor = get_kperp_conversion_factor(freq_hz)
+    corr_volume = (
+        kpar_conv_factor * delay_corr_len * (kperp_conv_factor * uv_corr_len) ** 2.0
     )
-    kx, ky, kz = uvn_to_cosmology_axis_transform(
-        u_coords_wl, v_coords_wl, delay_array_s, np.mean(freq_array_hz)
-    )
+    print(f"correlation volume: {corr_volume}")
 
-    # Get wedge masking
-    v_coords_meshed, u_coords_meshed = np.meshgrid(v_coords_wl, u_coords_wl)
-    uv_locs = np.stack((u_coords_meshed.flatten(), v_coords_meshed.flatten()), axis=-1)
-    uv_locs_m = uv_locs * c / np.mean(freq_array_hz)
-    wedge_mask_array = get_wedge_mask_array(
-        uv_locs_m,
-        delay_array_s,
-        wedge_slope=1,
-    )
-    wedge_mask_array = np.reshape(
-        wedge_mask_array, (len(u_coords_wl), len(v_coords_wl), len(delay_array_s))
-    )
-
-    distance_mat = np.sqrt(
-        np.abs(kx[:, np.newaxis, np.newaxis]) ** 2.0
-        + np.abs(ky[np.newaxis, :, np.newaxis]) ** 2.0
-        + np.abs(kz[np.newaxis, np.newaxis, :]) ** 2.0
-    )
-    sample_variance_cube = np.interp(distance_mat, model_k_axis, ps_model)
-
-    n_kbins = len(k_bin_edges) - 1
-    binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
-    for bin in range(n_kbins):
-        use_values = np.where(
-            (distance_mat > k_bin_edges[bin])
-            & (distance_mat <= k_bin_edges[bin + 1])
-            & wedge_mask_array
-        )
-        if len(use_values[0]) > 0:
-            binned_ps_variance[bin] = (
-                np.nansum(sample_variance_cube[use_values]) / len(use_values[0]) ** 2.0
+    # Calculate sampled volume
+    sampling_volumes = np.zeros(len(k_bin_edges) - 1, dtype=float)
+    k_bin_centers = (k_bin_edges[:-1] + k_bin_edges[1:]) / 2.0
+    k_bin_sizes = k_bin_edges[1:] - k_bin_edges[:-1]
+    below_delay_cut_inds = np.where(
+        k_bin_edges[1:] <= kpar_conv_factor / (2 * freq_resolution_hz)
+    )[0]
+    if len(below_delay_cut_inds) > 0:
+        sampling_volumes[below_delay_cut_inds] = (
+            2.0
+            * np.pi
+            * k_bin_centers[below_delay_cut_inds] ** 2.0
+            * k_bin_sizes[below_delay_cut_inds]
+            + np.pi / 6.0 * k_bin_sizes[below_delay_cut_inds] ** 3.0
+        ) * (
+            1.0
+            - wedge_slope
+            * kpar_conv_factor
+            / np.sqrt(
+                kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
             )
+        )
+    above_delay_cut_inds = np.where(
+        k_bin_edges[:-1] >= kpar_conv_factor / (2 * freq_resolution_hz)
+    )[0]
+    if len(above_delay_cut_inds) > 0:
+        sampling_volumes[above_delay_cut_inds] = np.pi * k_bin_centers[
+            above_delay_cut_inds
+        ] * k_bin_sizes[
+            above_delay_cut_inds
+        ] * kpar_conv_factor / freq_resolution_hz - (
+            2.0
+            * np.pi
+            * k_bin_centers[above_delay_cut_inds] ** 2.0
+            * k_bin_sizes[above_delay_cut_inds]
+            + np.pi / 6.0 * k_bin_sizes[above_delay_cut_inds] ** 3.0
+        ) * wedge_slope * kpar_conv_factor / np.sqrt(
+            kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
+        )
+    span_delay_cut_inds = np.where(
+        (k_bin_edges[:-1] < kpar_conv_factor / (2 * freq_resolution_hz))
+        & (k_bin_edges[1:] > kpar_conv_factor / (2 * freq_resolution_hz))
+    )[0]
+    if len(span_delay_cut_inds) > 0:
+        sampling_volumes[span_delay_cut_inds] = (
+            np.pi
+            / 8.0
+            * kpar_conv_factor
+            / freq_resolution_hz
+            * (
+                2.0 * k_bin_centers[span_delay_cut_inds]
+                + k_bin_sizes[span_delay_cut_inds]
+            )
+            ** 2.0
+            - wedge_slope
+            * kpar_conv_factor
+            / np.sqrt(
+                kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
+            )
+            * (
+                2.0
+                * np.pi
+                * k_bin_centers[span_delay_cut_inds] ** 2.0
+                * k_bin_sizes[span_delay_cut_inds]
+                + np.pi / 6.0 * k_bin_sizes[span_delay_cut_inds] ** 3.0
+            )
+            + np.pi
+            / 12.0
+            * (
+                k_bin_sizes[span_delay_cut_inds]
+                - 2.0 * k_bin_centers[span_delay_cut_inds]
+            )
+            ** 3.0
+            - np.pi / 24.0 * kpar_conv_factor**3.0 / freq_resolution_hz**3.0
+        )
 
-    return sample_variance_cube, binned_ps_variance
+    nsamples = sampling_volumes / corr_volume
+
+    ps_model_interp = np.interp(k_bin_centers, model_k_axis, ps_model)
+    sample_var = ps_model_interp / nsamples
+
+    return sample_var
