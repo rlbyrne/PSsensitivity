@@ -234,6 +234,7 @@ def delay_ps_sensitivity_analysis(
     k_bin_edges_1d=None,
     kpar_bin_edges=None,
     kperp_bin_edges=None,
+    wedge_extent_deg=90.0,
     zenith_angle=0,
 ):
 
@@ -301,7 +302,7 @@ def delay_ps_sensitivity_analysis(
     wedge_mask_array = get_wedge_mask_array(
         baselines_m,
         delay_array_s,
-        wedge_slope=1,
+        wedge_slope=np.sin(np.radians(wedge_extent_deg)),
     )
     n_kbins = len(k_bin_edges_1d) - 1
     nsamples = np.zeros(n_kbins, dtype=int)
@@ -345,7 +346,7 @@ def get_sample_variance(
     max_freq_hz=None,
     freq_resolution_hz=None,
     k_bin_edges=None,
-    wedge_slope=1,
+    wedge_extent_deg=90.0,
     include_delay_cut=True,
 ):
 
@@ -367,6 +368,7 @@ def get_sample_variance(
     below_delay_cut_inds = np.where(
         k_bin_edges[1:] <= kpar_conv_factor / (2 * freq_resolution_hz)
     )[0]
+    wedge_slope = np.sin(np.radians(wedge_extent_deg))
     if len(below_delay_cut_inds) > 0:
         sampling_volumes[below_delay_cut_inds] = (
             2.0
@@ -379,7 +381,8 @@ def get_sample_variance(
             - wedge_slope
             * kpar_conv_factor
             / np.sqrt(
-                kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
+                wedge_slope**2.0 * kpar_conv_factor**2.0
+                + kperp_conv_factor**2.0 * freq_hz**2.0
             )
         )
     above_delay_cut_inds = np.where(
@@ -397,7 +400,8 @@ def get_sample_variance(
             * k_bin_sizes[above_delay_cut_inds]
             + np.pi / 6.0 * k_bin_sizes[above_delay_cut_inds] ** 3.0
         ) * wedge_slope * kpar_conv_factor / np.sqrt(
-            kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
+            wedge_slope**2.0 * kpar_conv_factor**2.0
+            + kperp_conv_factor**2.0 * freq_hz**2.0
         )
     span_delay_cut_inds = np.where(
         (k_bin_edges[:-1] < kpar_conv_factor / (2 * freq_resolution_hz))
@@ -417,7 +421,8 @@ def get_sample_variance(
             - wedge_slope
             * kpar_conv_factor
             / np.sqrt(
-                kpar_conv_factor**2.0 + kperp_conv_factor**2.0 * freq_hz**2.0
+                wedge_slope**2.0 * kpar_conv_factor**2.0
+                + kperp_conv_factor**2.0 * freq_hz**2.0
             )
             * (
                 2.0
