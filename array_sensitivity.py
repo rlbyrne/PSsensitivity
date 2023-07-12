@@ -11,7 +11,6 @@ c = 3e8
 def get_cosmological_parameters():
 
     cosmological_parameter_dict = {
-        "D_H": 3000,  # Hubble distance, units Mpc/h
         "HI rest frame wavelength": 0.21,  # 21 cm wavelength, units m
         "omega_M": 0.27,  # Matter density
         "omega_k": 0,  # Curvature
@@ -19,12 +18,15 @@ def get_cosmological_parameters():
         "omega_B": 0.04,  # Baryon density
         "mass_frac_HI": 0.015,  # Mass fraction of neutral hydrogen
         "bias": 0.75,  # Bias between matter PS and HI PS
-        "h": 0.71,
+        "h": 0.71,  # Dimensionless Hubble constant
     }
     # Derived quantities
     cosmological_parameter_dict["H_0"] = (
-        c / cosmological_parameter_dict["D_H"]
-    )  # Hubble constant, units h*s/(m Mpc)
+        cosmological_parameter_dict["h"] * 1.0e5
+    )  # Hubble constant, units m / s / Mpc
+    cosmological_parameter_dict["D_H"] = (
+        c / cosmological_parameter_dict["H_0"]
+    )  # Hubble distance, units Mpc
 
     return cosmological_parameter_dict
 
@@ -87,11 +89,10 @@ def get_visibility_stddev(
 
 
 def get_kpar_conversion_factor(avg_freq_hz):
-    # See "Cosmological Parameters and Conversions Memo"
 
     cosmological_parameter_dict = get_cosmological_parameters()
     hubble_dist = cosmological_parameter_dict["D_H"]
-    hubble_const = cosmological_parameter_dict["H_0"]
+    h = cosmological_parameter_dict["h"]
     rest_frame_wl = cosmological_parameter_dict["HI rest frame wavelength"]
     omega_M = cosmological_parameter_dict["omega_M"]
     omega_k = cosmological_parameter_dict["omega_k"]
@@ -99,21 +100,20 @@ def get_kpar_conversion_factor(avg_freq_hz):
 
     avg_wl = c / avg_freq_hz
     z = avg_wl / rest_frame_wl - 1
-
-    # Line-of-sight conversion
+    rest_frame_freq = c / rest_frame_wl
     e_func = np.sqrt(omega_M * (1 + z) ** 3.0 + omega_k * (1 + z) ** 2.0 + omega_Lambda)
-    kpar_conv_factor = (2 * np.pi * hubble_const * e_func) / (
-        (1 + z) ** 2.0 * rest_frame_wl
-    )
+
+    kpar_conv_factor = (2 * np.pi * rest_frame_freq * e_func) / (hubble_dist * (1 + z)**2.)  # Units Mpc^-1
+    kpar_conv_factor /= h  # Units h/Mpc
+
     return kpar_conv_factor
 
 
 def get_kperp_conversion_factor(avg_freq_hz):
-    # See "Cosmological Parameters and Conversions Memo"
 
     cosmological_parameter_dict = get_cosmological_parameters()
     hubble_dist = cosmological_parameter_dict["D_H"]
-    hubble_const = cosmological_parameter_dict["H_0"]
+    h = cosmological_parameter_dict["h"]
     rest_frame_wl = cosmological_parameter_dict["HI rest frame wavelength"]
     omega_M = cosmological_parameter_dict["omega_M"]
     omega_k = cosmological_parameter_dict["omega_k"]
@@ -136,7 +136,9 @@ def get_kperp_conversion_factor(avg_freq_hz):
         ),
     )
     dist_comoving = hubble_dist * dist_comoving_int
-    kperp_conv_factor = 2 * np.pi / dist_comoving
+    kperp_conv_factor = 2 * np.pi / dist_comoving  # Units Mpc^-1
+    kperp_conv_factor /= h  # Units h/Mpc
+
     return kperp_conv_factor
 
 
@@ -161,11 +163,10 @@ def uvn_to_cosmology_axis_transform(
 
 def matter_ps_to_21cm_ps_conversion(
     k_axis,  # Units h/Mpc
-    matter_ps,  # Units (Mpc/h)^3
+    matter_ps,
     z,  # redshift
 ):
     # See Pober et al. 2013
-    # Produces a slight difference from the paper results. Why?
 
     cosmological_parameter_dict = get_cosmological_parameters()
     omega_M = cosmological_parameter_dict["omega_M"]
@@ -359,7 +360,6 @@ def get_sample_variance(
     corr_volume = (
         kpar_conv_factor * delay_corr_len * (kperp_conv_factor * uv_corr_len) ** 2.0
     )
-    print(f"correlation volume: {corr_volume}")
 
     # Calculate sampled volume
     sampling_volumes = np.zeros(len(k_bin_edges) - 1, dtype=float)
@@ -444,6 +444,6 @@ def get_sample_variance(
     nsamples = sampling_volumes / corr_volume
 
     ps_model_interp = np.interp(k_bin_centers, model_k_axis, ps_model)
-    sample_var = ps_model_interp / nsamples
+    sample_var = ps_model_interp**2.0 / nsamples
 
     return sample_var
