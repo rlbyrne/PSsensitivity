@@ -16,35 +16,37 @@ freq_resolution_hz = 162.5e3
 int_time_s = 15.0 * 60  # 15 minutes in each survey field
 max_bl_m = None
 
-antpos = array_sensitivity.get_antpos(antpos_filepath)
-baselines_m = array_sensitivity.get_baselines(antpos)
-
-freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
-delay_array_s = np.fft.fftshift(
-    np.fft.fftfreq(len(freq_array_hz), d=freq_resolution_hz)
-)
-kpar_conv_factor = array_sensitivity.get_kpar_conversion_factor(freq_hz)
-max_kpar = kpar_conv_factor * np.max(delay_array_s)
-
-kperp_conv_factor = array_sensitivity.get_kperp_conversion_factor(freq_hz)
-max_baseline_wl = np.max(np.sqrt(np.sum(baselines_m**2.0, axis=1))) * max_freq_hz / c
-max_kperp = kperp_conv_factor * max_baseline_wl
-max_k = np.sqrt(max_kpar**2.0 + max_kperp**2.0)
-
-# Define bin edges:
-k_bin_size = 0.1
-min_k = 0.02
-bin_edges = np.arange(min_k, max_k, k_bin_size)
-kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
-kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
 
 antpos_filepaths = ["20210226W.cfg", "20210226W_core_100.cfg", "20210226W_core_200.cfg"]
 wedge_extents = [90.0, 1.8]
 pointing_angles = [0., 60.]
 
-for array_config_ind, antpos_filepath in antpos_filepaths:
+for array_config_ind, antpos_filepath in enumerate(antpos_filepaths):
     ant_config_name = (["no_core", "core100", "core2000"])[array_config_ind]
-    for wedge_ext_ind, wedge_ext in wedge_extents:
+
+    antpos = array_sensitivity.get_antpos(antpos_filepath)
+    baselines_m = array_sensitivity.get_baselines(antpos)
+
+    freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
+    delay_array_s = np.fft.fftshift(
+        np.fft.fftfreq(len(freq_array_hz), d=freq_resolution_hz)
+    )
+    kpar_conv_factor = array_sensitivity.get_kpar_conversion_factor(freq_hz)
+    max_kpar = kpar_conv_factor * np.max(delay_array_s)
+
+    kperp_conv_factor = array_sensitivity.get_kperp_conversion_factor(freq_hz)
+    max_baseline_wl = np.max(np.sqrt(np.sum(baselines_m**2.0, axis=1))) * max_freq_hz / c
+    max_kperp = kperp_conv_factor * max_baseline_wl
+    max_k = np.sqrt(max_kpar**2.0 + max_kperp**2.0)
+
+    # Define bin edges:
+    k_bin_size = 0.1
+    min_k = 0.02
+    bin_edges = np.arange(min_k, max_k, k_bin_size)
+    kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
+    kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
+    
+    for wedge_ext_ind, wedge_ext in enumerate(wedge_extents):
         wedge_cut_name = (["horizon", "fov"])[wedge_ext_ind]
         for pointing_ang in pointing_angles:
             (
