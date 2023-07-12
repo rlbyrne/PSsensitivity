@@ -45,7 +45,7 @@ for array_config_ind, antpos_filepath in enumerate(antpos_filepaths):
     bin_edges = np.arange(min_k, max_k, k_bin_size)
     kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
     kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
-    
+
     for wedge_ext_ind, wedge_ext in enumerate(wedge_extents):
         wedge_cut_name = (["horizon", "fov"])[wedge_ext_ind]
         for pointing_ang in pointing_angles:
@@ -72,7 +72,7 @@ for array_config_ind, antpos_filepath in enumerate(antpos_filepaths):
                 zenith_angle=pointing_ang,
                 wedge_extent_deg=wedge_ext,
             )
-            f = open(f"simulation_outputs/hermal_noise_{ant_config_name}_wedge_cut_{wedge_cut_name}_za_{pointing_ang}.npy", "wb")
+            f = open(f"simulation_outputs/thermal_noise_{ant_config_name}_wedge_cut_{wedge_cut_name}_za_{pointing_ang}.npy", "wb")
             np.save(f, nsamples)
             np.save(f, binned_ps_variance)
             np.save(f, true_bin_edges)
