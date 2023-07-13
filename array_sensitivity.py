@@ -19,6 +19,7 @@ def get_cosmological_parameters():
         "mass_frac_HI": 0.015,  # Mass fraction of neutral hydrogen
         "bias": 0.75,  # Bias between matter PS and HI PS
         "h": 0.71,  # Dimensionless Hubble constant
+        "n": 0.01,  # Shot noise scale, units h^3/Mpc^3
     }
     # Derived quantities
     cosmological_parameter_dict["H_0"] = (
@@ -64,6 +65,44 @@ def get_baselines(antpos):
     return baselines_m
 
 
+def calculate_psf(
+    baselines_m=None,
+    min_freq_hz=None,
+    max_freq_hz=None,
+    freq_resolution_hz=None,
+    antenna_diameter_m=None,
+):
+
+    resolution_deg = 1e-3
+    image_extent_deg = 2.0
+    ew_axis = np.arange(0, image_extent_deg, resolution_deg)
+    ew_axis = np.append(-(ew_axis[::-1])[:-1], ew_axis)
+    ns_axis = np.copy(ew_axis)
+    ew_vals, ns_vals = np.meshgrid(ew_axis, ns_axis)
+
+    frequencies = np.arange(
+        min_freq_hz, max_freq_hz + freq_resolution_hz / 2, freq_resolution_hz
+    )
+    frequencies = [frequencies[0]]
+    psf = np.zeros_like(ew_vals)
+    psf = np.repeat(psf, len(frequencies), axis=0)
+    for freq_ind, freq in enumerate(frequencies):
+        wl = c / freq
+        antenna_diameter_wl = antenna_diameter_m / wl
+        beam = scipy.special.jv(
+            0, np.pi * antenna_diameter_wl * np.sqrt(ew_vals**2.0 + ns_vals**2.0)
+        )
+        baselines_wl = baselines_m / wl
+        psf_no_beam = np.zeros_like(ew_vals)
+        for bl in baselines_wl:
+            psf_no_beam += np.cos(2 * np.pi * bl[0] * np.radians(ew_vals)) * np.cos(
+                2 * np.pi * bl[1] * np.radians(ns_vals)
+            )
+        psf[freq_ind, :, :] = psf_no_beam * beam**2.0
+
+    return psf, frequencies, ew_axis, ns_axis
+
+
 def get_visibility_stddev(
     freq_hz=None,
     tsys_k=None,
@@ -103,7 +142,9 @@ def get_kpar_conversion_factor(avg_freq_hz):
     rest_frame_freq = c / rest_frame_wl
     e_func = np.sqrt(omega_M * (1 + z) ** 3.0 + omega_k * (1 + z) ** 2.0 + omega_Lambda)
 
-    kpar_conv_factor = (2 * np.pi * rest_frame_freq * e_func) / (hubble_dist * (1 + z)**2.)  # Units Mpc^-1
+    kpar_conv_factor = (2 * np.pi * rest_frame_freq * e_func) / (
+        hubble_dist * (1 + z) ** 2.0
+    )  # Units Mpc^-1
     kpar_conv_factor /= h  # Units h/Mpc
 
     return kpar_conv_factor
@@ -161,19 +202,13 @@ def uvn_to_cosmology_axis_transform(
     return kx, ky, kz
 
 
-def matter_ps_to_21cm_ps_conversion(
-    k_axis,  # Units h/Mpc
-    matter_ps,
-    z,  # redshift
-):
-    # See Pober et al. 2013
+def get_brightness_temp(z):
 
     cosmological_parameter_dict = get_cosmological_parameters()
     omega_M = cosmological_parameter_dict["omega_M"]
     omega_Lambda = cosmological_parameter_dict["omega_Lambda"]
     omega_B = cosmological_parameter_dict["omega_B"]
     mass_frac_HI = cosmological_parameter_dict["mass_frac_HI"]
-    bias = cosmological_parameter_dict["bias"]
     h = cosmological_parameter_dict["h"]
 
     brightness_temp = (
@@ -184,8 +219,22 @@ def matter_ps_to_21cm_ps_conversion(
         * (omega_B / 0.044)
         * (mass_frac_HI / 0.01)
     )  # Units mK
-    ps = brightness_temp**2.0 * bias**2.0 * matter_ps  # Units mK^2(Mpc/h)^3
 
+    return brightness_temp
+
+
+def matter_ps_to_21cm_ps_conversion(
+    k_axis,  # Units h/Mpc
+    matter_ps,
+    z,  # redshift
+):
+    # See Pober et al. 2013
+
+    cosmological_parameter_dict = get_cosmological_parameters()
+    bias = cosmological_parameter_dict["bias"]
+
+    brightness_temp = get_brightness_temp(z)
+    ps = brightness_temp**2.0 * bias**2.0 * matter_ps  # Units mK^2(Mpc/h)^3
     # Convert to a dimensionless PS
     ps *= k_axis**3.0 / (2 * np.pi**2.0)
 
@@ -447,3 +496,30 @@ def get_sample_variance(
     sample_var = ps_model_interp**2.0 / nsamples
 
     return sample_var
+
+
+def get_shot_noise(
+    min_freq_hz=None,
+    max_freq_hz=None,
+    k_bin_edges=None,
+):
+    # This doesn't match with results in Pober et al. 2013
+    # Maybe we should be using the predicted power spectrum instead of the brightness temperature?
+
+    cosmological_parameter_dict = get_cosmological_parameters()
+    shot_noise_scale = cosmological_parameter_dict["n"]
+    rest_frame_wl = cosmological_parameter_dict["HI rest frame wavelength"]
+
+    avg_wl = c / np.mean([min_freq_hz, max_freq_hz])
+    z = avg_wl / rest_frame_wl - 1
+    brightness_temp = get_brightness_temp(z)
+
+    k_bin_centers = (k_bin_edges[:-1] + k_bin_edges[1:]) / 2
+    shot_noise = (
+        k_bin_centers**3.0
+        / (2.0 * np.pi**2.0)
+        / shot_noise_scale
+        * brightness_temp**2.0
+    ) ** 2.0  # Units mK^4
+
+    return shot_noise
