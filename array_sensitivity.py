@@ -409,6 +409,9 @@ def get_sample_variance(
     corr_volume = (
         kpar_conv_factor * delay_corr_len * (kperp_conv_factor * uv_corr_len) ** 2.0
     )
+    print(f"Kpar correlation length: {kpar_conv_factor * delay_corr_len}")
+    print(f"Kperp correlation length: {kperp_conv_factor * uv_corr_len}")
+    print(f"Correlation volume: {corr_volume}")
 
     # Calculate sampled volume
     sampling_volumes = np.zeros(len(k_bin_edges) - 1, dtype=float)
