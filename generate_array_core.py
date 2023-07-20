@@ -8,8 +8,8 @@ max_freq_hz = c / 0.21
 freq_hz = np.mean([min_freq_hz, max_freq_hz])
 bao_scales_deg = [1.5, 4.6]
 n_core_antennas = 200
-core_radius_m = 100.0
-min_ant_separation = 10.0
+core_radius_m = 50.0
+min_ant_separation = 3.0
 
 antpos = array_sensitivity.get_antpos(antpos_filepath)
 
