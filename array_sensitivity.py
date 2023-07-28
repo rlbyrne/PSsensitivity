@@ -83,6 +83,7 @@ def calculate_psf(
     frequencies = np.arange(
         min_freq_hz, max_freq_hz + freq_resolution_hz / 2, freq_resolution_hz
     )
+    frequencies = np.array([np.mean(frequencies)])
     psf = np.zeros_like(ew_vals)
     psf = np.repeat(psf, len(frequencies), axis=0)
     chunk_size = 500
@@ -117,10 +118,6 @@ def calculate_psf(
                 print(
                     f"{round(float(bl_ind_start) / float(len(baselines_wl)) * 100)}% completed"
                 )
-        #for bl_ind, bl in enumerate(baselines_wl):
-        #    psf_no_beam += np.cos(2 * np.pi * bl[0] * np.radians(ew_vals)) * np.cos(
-        #        2 * np.pi * bl[1] * np.radians(ns_vals)
-        #    )
         psf[freq_ind, :, :] = psf_no_beam * beam**2.0
 
     return psf, frequencies, ew_axis, ns_axis
