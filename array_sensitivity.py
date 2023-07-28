@@ -73,8 +73,8 @@ def calculate_psf(
     antenna_diameter_m=None,
 ):
 
-    resolution_deg = 1e-3
-    image_extent_deg = 2.0
+    resolution_deg = 5.0 / 60.0 / 1000
+    image_extent_deg = 5.0 / 60.0
     ew_axis = np.arange(0, image_extent_deg, resolution_deg)
     ew_axis = np.append(-(ew_axis[::-1])[:-1], ew_axis)
     ns_axis = np.copy(ew_axis)
@@ -83,10 +83,11 @@ def calculate_psf(
     frequencies = np.arange(
         min_freq_hz, max_freq_hz + freq_resolution_hz / 2, freq_resolution_hz
     )
-    frequencies = [frequencies[0]]
     psf = np.zeros_like(ew_vals)
     psf = np.repeat(psf, len(frequencies), axis=0)
+    chunk_size = 500
     for freq_ind, freq in enumerate(frequencies):
+        print(f"Calculating frequency {freq_ind + 1} of {len(frequencies)}")
         wl = c / freq
         antenna_diameter_wl = antenna_diameter_m / wl
         beam = scipy.special.jv(
@@ -94,10 +95,32 @@ def calculate_psf(
         )
         baselines_wl = baselines_m / wl
         psf_no_beam = np.zeros_like(ew_vals)
-        for bl in baselines_wl:
-            psf_no_beam += np.cos(2 * np.pi * bl[0] * np.radians(ew_vals)) * np.cos(
-                2 * np.pi * bl[1] * np.radians(ns_vals)
+        bl_ind_start = 0
+        while bl_ind_start < np.shape(baselines_wl)[0]:
+            psf_no_beam += np.sum(
+                np.cos(
+                    2
+                    * np.pi
+                    * baselines_wl[bl_ind_start : bl_ind_start + chunk_size, 0, np.newaxis, np.newaxis]
+                    * np.radians(ew_vals[np.newaxis, :, :])
+                )
+                * np.cos(
+                    2
+                    * np.pi
+                    * baselines_wl[bl_ind_start : bl_ind_start + chunk_size, 1, np.newaxis, np.newaxis]
+                    * np.radians(ns_vals[np.newaxis, :, :])
+                ),
+                axis=0,
             )
+            bl_ind_start += chunk_size
+            if bl_ind_start % 10000 == 0:
+                print(
+                    f"{round(float(bl_ind_start) / float(len(baselines_wl)) * 100)}% completed"
+                )
+        #for bl_ind, bl in enumerate(baselines_wl):
+        #    psf_no_beam += np.cos(2 * np.pi * bl[0] * np.radians(ew_vals)) * np.cos(
+        #        2 * np.pi * bl[1] * np.radians(ns_vals)
+        #    )
         psf[freq_ind, :, :] = psf_no_beam * beam**2.0
 
     return psf, frequencies, ew_axis, ns_axis
