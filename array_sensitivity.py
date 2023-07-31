@@ -85,7 +85,10 @@ def calculate_psf(
     )
     frequencies = np.array([np.mean(frequencies)])
     psf = np.zeros_like(ew_vals)
-    psf = np.repeat(psf, len(frequencies), axis=0)
+    if len(frequencies) == 1:
+        psf = psf[np.newaxis, :, :]
+    else:
+        psf = np.repeat(psf, len(frequencies), axis=0)
     chunk_size = 500
     for freq_ind, freq in enumerate(frequencies):
         print(f"Calculating frequency {freq_ind + 1} of {len(frequencies)}")
