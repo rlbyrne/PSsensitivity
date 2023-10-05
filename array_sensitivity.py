@@ -83,7 +83,7 @@ def calculate_psf(
     frequencies = np.arange(
         min_freq_hz, max_freq_hz + freq_resolution_hz / 2, freq_resolution_hz
     )
-    frequencies = np.array([np.mean(frequencies)])
+    frequencies = np.array([np.mean(frequencies)])  # Use just one frequency
     psf = np.zeros_like(ew_vals)
     if len(frequencies) == 1:
         psf = psf[np.newaxis, :, :]
@@ -93,10 +93,8 @@ def calculate_psf(
     for freq_ind, freq in enumerate(frequencies):
         print(f"Calculating frequency {freq_ind + 1} of {len(frequencies)}")
         wl = c / freq
-        antenna_diameter_wl = antenna_diameter_m / wl
-        beam = scipy.special.jv(
-            0, np.pi * antenna_diameter_wl * np.sqrt(ew_vals**2.0 + ns_vals**2.0)
-        )
+        bessel_argument = np.pi / wl * antenna_diameter_m * np.sin(np.radians(np.sqrt(ew_vals**2.0 + ns_vals**2.0)))
+        beam = (2.0 * scipy.special.jv(1, bessel_argument) / bessel_argument) ** 2.0
         baselines_wl = baselines_m / wl
         psf_no_beam = np.zeros_like(ew_vals)
         bl_ind_start = 0
@@ -121,7 +119,7 @@ def calculate_psf(
                 print(
                     f"{round(float(bl_ind_start) / float(len(baselines_wl)) * 100)}% completed"
                 )
-        psf[freq_ind, :, :] = psf_no_beam * beam**2.0
+        psf[freq_ind, :, :] = psf_no_beam * beam
 
     return psf, frequencies, ew_axis, ns_axis
 
