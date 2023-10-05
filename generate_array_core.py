@@ -1,7 +1,7 @@
 import numpy as np
 import array_sensitivity
 
-antpos_filepath = "20210226W.cfg"
+antpos_filepath = "W2-17.cfg"
 c = 3e8
 min_freq_hz = 0.7e9
 max_freq_hz = c / 0.21
@@ -35,6 +35,6 @@ for ant_ind in range(n_core_antennas):
     antpos_data.append(
         f"{new_antpos[ant_ind, 0]} {new_antpos[ant_ind, 1]} 0 5 dsa-core-{ant_ind + 1} \n"
     )
-f = open("20210226W_core.cfg", "w")
+f = open("W2-17_core.cfg", "w")
 antpos_data = f.writelines(antpos_data)
 f.close()

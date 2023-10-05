@@ -9,16 +9,16 @@ min_freq_hz = 0.7e9
 max_freq_hz = c / 0.21
 freq_hz = np.mean([min_freq_hz, max_freq_hz])
 tsys_k = 25
-aperture_efficiency = 0.62
-field_of_view_deg2 = 10.6
+aperture_efficiency = 0.7
+field_of_view_deg2 = 30.0
 antenna_diameter_m = 5
-freq_resolution_hz = 162.5e3
+freq_resolution_hz = 130.2e3
 int_time_s = 15.0 * 60  # 15 minutes in each survey field
 max_bl_m = None
 
 
-antpos_filepaths = ["20210226W.cfg", "20210226W_core_100.cfg", "20210226W_core_200.cfg"]
-wedge_extents = [90.0, 1.8]
+antpos_filepaths = ["W2-17.cfg", "W2-17_core.cfg"]
+wedge_extents = [90.0, 3.09]
 pointing_angles = [0., 60.]
 
 for array_config_ind, antpos_filepath in enumerate(antpos_filepaths):

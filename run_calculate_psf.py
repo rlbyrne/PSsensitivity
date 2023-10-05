@@ -7,7 +7,7 @@ c = 3e8
 min_freq_hz = 0.7e9
 max_freq_hz = c / 0.21
 antenna_diameter_m = 5
-freq_resolution_hz = 162.5e3
+freq_resolution_hz = 130.2e3
 antpos_filepath = "20210226W.cfg"
 
 antpos = array_sensitivity.get_antpos(antpos_filepath)
