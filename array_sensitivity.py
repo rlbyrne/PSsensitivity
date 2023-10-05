@@ -19,7 +19,6 @@ def get_cosmological_parameters():
         "mass_frac_HI": 0.015,  # Mass fraction of neutral hydrogen
         "bias": 0.75,  # Bias between matter PS and HI PS
         "h": 0.71,  # Dimensionless Hubble constant
-        "n": 0.01,  # Shot noise scale, units h^3/Mpc^3
     }
     # Derived quantities
     cosmological_parameter_dict["H_0"] = (
@@ -93,7 +92,12 @@ def calculate_psf(
     for freq_ind, freq in enumerate(frequencies):
         print(f"Calculating frequency {freq_ind + 1} of {len(frequencies)}")
         wl = c / freq
-        bessel_argument = np.pi / wl * antenna_diameter_m * np.sin(np.radians(np.sqrt(ew_vals**2.0 + ns_vals**2.0)))
+        bessel_argument = (
+            np.pi
+            / wl
+            * antenna_diameter_m
+            * np.sin(np.radians(np.sqrt(ew_vals**2.0 + ns_vals**2.0)))
+        )
         beam = (2.0 * scipy.special.jv(1, bessel_argument) / bessel_argument) ** 2.0
         baselines_wl = baselines_m / wl
         psf_no_beam = np.zeros_like(ew_vals)
@@ -103,13 +107,23 @@ def calculate_psf(
                 np.cos(
                     2
                     * np.pi
-                    * baselines_wl[bl_ind_start : bl_ind_start + chunk_size, 0, np.newaxis, np.newaxis]
+                    * baselines_wl[
+                        bl_ind_start : bl_ind_start + chunk_size,
+                        0,
+                        np.newaxis,
+                        np.newaxis,
+                    ]
                     * np.radians(ew_vals[np.newaxis, :, :])
                 )
                 * np.cos(
                     2
                     * np.pi
-                    * baselines_wl[bl_ind_start : bl_ind_start + chunk_size, 1, np.newaxis, np.newaxis]
+                    * baselines_wl[
+                        bl_ind_start : bl_ind_start + chunk_size,
+                        1,
+                        np.newaxis,
+                        np.newaxis,
+                    ]
                     * np.radians(ns_vals[np.newaxis, :, :])
                 ),
                 axis=0,
@@ -409,16 +423,13 @@ def delay_ps_sensitivity_analysis(
     )
 
 
-def get_sample_variance(
-    ps_model,  # Units mK^2
-    model_k_axis,  # Units h/Mpc
+def get_nsamples(
     field_of_view_deg2=None,
     min_freq_hz=None,
     max_freq_hz=None,
     freq_resolution_hz=None,
     k_bin_edges=None,
     wedge_extent_deg=90.0,
-    include_delay_cut=True,
 ):
 
     field_of_view_diameter = 2 * np.sqrt(field_of_view_deg2 / np.pi)
@@ -515,7 +526,30 @@ def get_sample_variance(
         )
 
     nsamples = sampling_volumes / corr_volume
+    return nsamples
 
+
+def get_sample_variance(
+    ps_model,  # Units mK^2
+    model_k_axis,  # Units h/Mpc
+    field_of_view_deg2=None,
+    min_freq_hz=None,
+    max_freq_hz=None,
+    freq_resolution_hz=None,
+    k_bin_edges=None,
+    wedge_extent_deg=90.0,
+):
+
+    nsamples = get_nsamples(
+        field_of_view_deg2=field_of_view_deg2,
+        min_freq_hz=min_freq_hz,
+        max_freq_hz=max_freq_hz,
+        freq_resolution_hz=freq_resolution_hz,
+        k_bin_edges=k_bin_edges,
+        wedge_extent_deg=wedge_extent_deg,
+    )
+
+    k_bin_centers = (k_bin_edges[:-1] + k_bin_edges[1:]) / 2.0
     ps_model_interp = np.interp(k_bin_centers, model_k_axis, ps_model)
     sample_var = ps_model_interp**2.0 / nsamples
 
@@ -523,27 +557,35 @@ def get_sample_variance(
 
 
 def get_shot_noise(
+    p_shot=53.5,  # Units Mpc^3/h^3
+    field_of_view_deg2=None,
     min_freq_hz=None,
     max_freq_hz=None,
+    freq_resolution_hz=None,
     k_bin_edges=None,
+    wedge_extent_deg=90.0,
 ):
-    # This doesn't match with results in Pober et al. 2013
-    # Maybe we should be using the predicted power spectrum instead of the brightness temperature?
+
+    nsamples = get_nsamples(
+        field_of_view_deg2=field_of_view_deg2,
+        min_freq_hz=min_freq_hz,
+        max_freq_hz=max_freq_hz,
+        freq_resolution_hz=freq_resolution_hz,
+        k_bin_edges=k_bin_edges,
+        wedge_extent_deg=wedge_extent_deg,
+    )
+
+    k_bin_centers = (k_bin_edges[:-1] + k_bin_edges[1:]) / 2.0
 
     cosmological_parameter_dict = get_cosmological_parameters()
-    shot_noise_scale = cosmological_parameter_dict["n"]
     rest_frame_wl = cosmological_parameter_dict["HI rest frame wavelength"]
-
     avg_wl = c / np.mean([min_freq_hz, max_freq_hz])
     z = avg_wl / rest_frame_wl - 1
     brightness_temp = get_brightness_temp(z)
 
-    k_bin_centers = (k_bin_edges[:-1] + k_bin_edges[1:]) / 2
-    shot_noise = (
-        k_bin_centers**3.0
-        / (2.0 * np.pi**2.0)
-        / shot_noise_scale
-        * brightness_temp**2.0
-    ) ** 2.0  # Units mK^4
+    noise = (
+        k_bin_centers**3.0 / (2.0 * np.pi**2.0) * brightness_temp**2.0 * p_shot
+    )
+    shot_noise_var = noise**2.0 / nsamples
 
-    return shot_noise
+    return shot_noise_var
