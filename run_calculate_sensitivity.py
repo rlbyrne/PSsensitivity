@@ -45,7 +45,7 @@ run_params = [
 
 for run_ind in range(len(run_params)):
 
-    use_params = run_params[use_params]
+    use_params = run_params[run_ind]
     antpos_filepath = use_params["antpos"]
     wedge_ext = use_params["wedge extent"]
     pointing_ang = use_params["pointing angle"]
