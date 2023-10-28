@@ -12,13 +12,13 @@ def get_cosmological_parameters():
 
     cosmological_parameter_dict = {
         "HI rest frame wavelength": 0.21,  # 21 cm wavelength, units m
-        "omega_M": 0.27,  # Matter density
+        "omega_M": 0.3111,  # Matter density
         "omega_k": 0,  # Curvature
-        "omega_Lambda": 0.73,  # Cosmological constant
-        "omega_B": 0.04,  # Baryon density
+        "omega_Lambda": 0.6889,  # Cosmological constant
+        "omega_B": 0.0490,  # Baryon density
         "mass_frac_HI": 0.015,  # Mass fraction of neutral hydrogen
         "bias": 0.75,  # Bias between matter PS and HI PS
-        "h": 0.71,  # Dimensionless Hubble constant
+        "h": 0.6766,  # Dimensionless Hubble constant
     }
     # Derived quantities
     cosmological_parameter_dict["H_0"] = (
