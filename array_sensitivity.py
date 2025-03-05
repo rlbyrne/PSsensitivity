@@ -3,6 +3,7 @@ import pyuvdata
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import scipy.integrate
+from tqdm import tqdm
 
 
 c = 3e8
@@ -316,11 +317,14 @@ def delay_ps_sensitivity_analysis(
     freq_resolution_hz=None,
     int_time_s=None,
     max_bl_m=None,
-    k_bin_edges_1d=None,
-    kpar_bin_edges=None,
-    kperp_bin_edges=None,
+    k_bin_edges_1d=None,  # required if calculate_1d is True
+    kpar_bin_edges=None,  # required if calculate_2d is True
+    kperp_bin_edges=None,  # required if calculate_2d is True
     wedge_extent_deg=90.0,
     zenith_angle=0,
+    calculate_2d=True,
+    calculate_1d=True,
+    verbose=True,
 ):
 
     mean_freq_hz = np.mean([min_freq_hz, max_freq_hz])
@@ -360,58 +364,68 @@ def delay_ps_sensitivity_analysis(
     )
 
     # 2d binning
-    kperp_dist = np.sqrt(np.abs(kx) ** 2.0 + np.abs(ky) ** 2.0)
-    n_kbins_kpar = len(kpar_bin_edges) - 1
-    n_kbins_kperp = len(kperp_bin_edges) - 1
+    if calculate_2d:
+        kperp_dist = np.sqrt(np.abs(kx) ** 2.0 + np.abs(ky) ** 2.0)
+        n_kbins_kpar = len(kpar_bin_edges) - 1
+        n_kbins_kperp = len(kperp_bin_edges) - 1
 
-    nsamples_kpar = np.zeros(n_kbins_kpar, dtype=int)
-    for kpar_bin in range(n_kbins_kpar):
-        use_values_kpar = np.where(
-            (np.abs(kz) > kpar_bin_edges[kpar_bin])
-            & (np.abs(kz) <= kpar_bin_edges[kpar_bin + 1])
-        )
-        nsamples_kpar[kpar_bin] = len(use_values_kpar[0])
+        nsamples_kpar = np.zeros(n_kbins_kpar, dtype=int)
+        for kpar_bin in range(n_kbins_kpar):
+            use_values_kpar = np.where(
+                (np.abs(kz) > kpar_bin_edges[kpar_bin])
+                & (np.abs(kz) <= kpar_bin_edges[kpar_bin + 1])
+            )
+            nsamples_kpar[kpar_bin] = len(use_values_kpar[0])
 
-    nsamples_kperp = np.zeros(n_kbins_kperp, dtype=int)
-    for kperp_bin in range(n_kbins_kperp):
-        use_values_kperp = np.where(
-            (kperp_dist > kperp_bin_edges[kperp_bin])
-            & (kperp_dist < kperp_bin_edges[kperp_bin + 1])
-        )
-        nsamples_kperp[kperp_bin] = len(use_values_kperp[0])
-    nsamples_2d = np.outer(nsamples_kperp, nsamples_kpar)
+        nsamples_kperp = np.zeros(n_kbins_kperp, dtype=int)
+        for kperp_bin in range(n_kbins_kperp):
+            use_values_kperp = np.where(
+                (kperp_dist > kperp_bin_edges[kperp_bin])
+                & (kperp_dist < kperp_bin_edges[kperp_bin + 1])
+            )
+            nsamples_kperp[kperp_bin] = len(use_values_kperp[0])
+        nsamples_2d = np.outer(nsamples_kperp, nsamples_kpar)
 
-    binned_ps_variance_2d = ps_variance / nsamples_2d
+        binned_ps_variance_2d = ps_variance / nsamples_2d
+    else:
+        binned_ps_variance_2d = None
+        nsamples_2d = None
 
     # 1d binning
-    wedge_mask_array = get_wedge_mask_array(
-        baselines_m,
-        delay_array_s,
-        wedge_slope=np.sin(np.radians(wedge_extent_deg)),
-    )
-    n_kbins = len(k_bin_edges_1d) - 1
-    nsamples = np.zeros(n_kbins, dtype=int)
-    distance_mat = np.sqrt(
-        np.abs(kx[:, np.newaxis]) ** 2.0
-        + np.abs(ky[:, np.newaxis]) ** 2.0
-        + np.abs(kz[np.newaxis, :]) ** 2.0
-    )
-    binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
-    true_bin_edges = np.full((n_kbins, 2), np.nan, dtype=float)
-    true_bin_centers = np.full(n_kbins, np.nan, dtype=float)
-    for bin in range(n_kbins):
-        use_values = np.where(
-            (distance_mat > k_bin_edges_1d[bin])
-            & (distance_mat <= k_bin_edges_1d[bin + 1])
-            & wedge_mask_array
+    if calculate_1d:
+        wedge_mask_array = get_wedge_mask_array(
+            baselines_m,
+            delay_array_s,
+            wedge_slope=np.sin(np.radians(wedge_extent_deg)),
         )
-        nsamples[bin] = len(use_values[0])
-        if nsamples[bin] > 0:
-            true_bin_edges[bin, 0] = np.min(distance_mat[use_values])
-            true_bin_edges[bin, 1] = np.max(distance_mat[use_values])
-            true_bin_centers[bin] = np.mean(distance_mat[use_values])
+        n_kbins = len(k_bin_edges_1d) - 1
+        nsamples = np.zeros(n_kbins, dtype=int)
+        distance_mat = np.sqrt(
+            np.abs(kx[:, np.newaxis]) ** 2.0
+            + np.abs(ky[:, np.newaxis]) ** 2.0
+            + np.abs(kz[np.newaxis, :]) ** 2.0
+        )
+        binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
+        true_bin_edges = np.full((n_kbins, 2), np.nan, dtype=float)
+        true_bin_centers = np.full(n_kbins, np.nan, dtype=float)
+        for bin in tqdm(range(n_kbins)):
+            use_values = np.where(
+                (distance_mat > k_bin_edges_1d[bin])
+                & (distance_mat <= k_bin_edges_1d[bin + 1])
+                & wedge_mask_array
+            )
+            nsamples[bin] = len(use_values[0])
+            if nsamples[bin] > 0:
+                true_bin_edges[bin, 0] = np.min(distance_mat[use_values])
+                true_bin_edges[bin, 1] = np.max(distance_mat[use_values])
+                true_bin_centers[bin] = np.mean(distance_mat[use_values])
 
-    binned_ps_variance = ps_variance / nsamples
+        binned_ps_variance = ps_variance / nsamples
+    else:
+        nsamples = None
+        binned_ps_variance = None
+        true_bin_edges = None
+        true_bin_centers = None
 
     return (
         nsamples,
@@ -583,9 +597,7 @@ def get_shot_noise(
     z = avg_wl / rest_frame_wl - 1
     brightness_temp = get_brightness_temp(z)
 
-    noise = (
-        k_bin_centers**3.0 / (2.0 * np.pi**2.0) * brightness_temp**2.0 * p_shot
-    )
+    noise = k_bin_centers**3.0 / (2.0 * np.pi**2.0) * brightness_temp**2.0 * p_shot
     shot_noise_var = noise**2.0 / nsamples
 
     return shot_noise_var
