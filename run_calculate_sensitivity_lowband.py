@@ -6,7 +6,7 @@ c = 3e8
 min_freq_hz = 130e6  # z=10
 max_freq_hz = 250e6  # z=5
 freq_hz = np.mean([min_freq_hz, max_freq_hz])
-tsys_k = 1  # placeholder value
+tsys_k = 100  # placeholder value
 aperture_efficiency = 0.7
 # field_of_view_deg2 = 2830.0  # Approximately 60 deg FWHM
 antenna_diameter_m = 3  # Assume 3 m ground planes
@@ -62,7 +62,6 @@ kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
     kperp_bin_edges=kperp_bin_edges,
     zenith_angle=pointing_ang,
     wedge_extent_deg=wedge_ext,
-    calculate_2d=False,
 )
 
 f = open(f"simulation_outputs/thermal_noise_lowband.npy", "wb")
