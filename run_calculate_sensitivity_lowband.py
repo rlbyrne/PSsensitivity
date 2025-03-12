@@ -6,10 +6,12 @@ c = 3e8
 min_freq_hz = 130e6  # z=10
 max_freq_hz = 250e6  # z=5
 freq_hz = np.mean([min_freq_hz, max_freq_hz])
-tsys_k = 100  # placeholder value
+tsys_k = 50 * (c / freq_hz) ** (2.56)
 aperture_efficiency = 0.7
 # field_of_view_deg2 = 2830.0  # Approximately 60 deg FWHM
-antenna_diameter_m = 3  # Assume 3 m ground planes
+antenna_diameter_m = (
+    c / freq_hz * np.sqrt(4 / (3 * np.pi * aperture_efficiency))
+)  # Let SEFD = wl^2/3 and calculate the equivalent antenna diameter
 freq_resolution_hz = 130.2e3
 int_time_s = 15.0 * 60  # 15 minutes in each survey field
 max_bl_m = None

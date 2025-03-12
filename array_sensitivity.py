@@ -365,6 +365,8 @@ def delay_ps_sensitivity_analysis(
 
     # 2d binning
     if calculate_2d:
+        if verbose:
+            print("Calculating 2D-binned sensitivity.")
         kperp_dist = np.sqrt(np.abs(kx) ** 2.0 + np.abs(ky) ** 2.0)
         n_kbins_kpar = len(kpar_bin_edges) - 1
         n_kbins_kperp = len(kperp_bin_edges) - 1
@@ -408,7 +410,9 @@ def delay_ps_sensitivity_analysis(
         binned_ps_variance = np.full(n_kbins, np.nan, dtype=float)
         true_bin_edges = np.full((n_kbins, 2), np.nan, dtype=float)
         true_bin_centers = np.full(n_kbins, np.nan, dtype=float)
-        for bin in tqdm(range(n_kbins)):
+        if verbose:
+            print("Calculating 1D-binned sensitivity.")
+        for bin in tqdm(range(n_kbins), disable=not verbose):
             use_values = np.where(
                 (distance_mat > k_bin_edges_1d[bin])
                 & (distance_mat <= k_bin_edges_1d[bin + 1])
