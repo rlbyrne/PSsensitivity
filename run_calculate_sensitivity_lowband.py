@@ -36,7 +36,7 @@ max_kperp = kperp_conv_factor * max_baseline_wl
 max_k = np.sqrt(max_kpar**2.0 + max_kperp**2.0)
 
 # Define bin edges:
-k_bin_size = 0.1
+k_bin_size = 0.5
 min_k = 0.02
 bin_edges = np.arange(min_k, max_k, k_bin_size)
 kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
