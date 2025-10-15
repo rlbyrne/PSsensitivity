@@ -146,12 +146,16 @@ def get_visibility_stddev(
     antenna_diameter_m=None,
     freq_resolution_hz=None,
     int_time_s=None,
+    dish_antenna=True,
 ):
 
     wavelength_m = c / freq_hz
-    eff_collecting_area = (
-        np.pi * antenna_diameter_m**2.0 / 4 * aperture_efficiency
-    )  # Assumes a circular aperture. Uses the single antenna aperture efficiency. Is this right?
+    if dish_antenna:
+        eff_collecting_area = (
+            np.pi * antenna_diameter_m**2.0 / 4 * aperture_efficiency
+        )  # Assumes a circular aperture. Uses the single antenna aperture efficiency.
+    else:
+        eff_collecting_area = 3 * wavelength_m**2 / (8 * np.pi)
     visibility_rms = (
         wavelength_m**2.0
         * tsys_k
@@ -309,11 +313,13 @@ def get_wedge_mask_array(
 
 def delay_ps_sensitivity_analysis(
     antpos_filepath=None,
+    antpos=None,  # Required if antpos_filepath is None. Array of shape (Nants, 2)
     min_freq_hz=None,
     max_freq_hz=None,
     tsys_k=None,
-    aperture_efficiency=None,
-    antenna_diameter_m=None,
+    dish_antenna=True,
+    aperture_efficiency=None,  # required if dish_antenna is True
+    antenna_diameter_m=None,  # required if dish_antenna is True
     freq_resolution_hz=None,
     int_time_s=None,
     max_bl_m=None,
@@ -336,12 +342,14 @@ def delay_ps_sensitivity_analysis(
         antenna_diameter_m=antenna_diameter_m,
         freq_resolution_hz=freq_resolution_hz,
         int_time_s=int_time_s,
+        dish_antenna=dish_antenna,
     )
     freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
     delay_visibility_variance = visibility_stddev_mk**2.0 * len(freq_array_hz)
     ps_variance = 4.0 * delay_visibility_variance**2.0
 
-    antpos = get_antpos(antpos_filepath)
+    if antpos is None:
+        antpos = get_antpos(antpos_filepath)
     baselines_m = get_baselines(antpos)
     if max_bl_m is not None:
         baselines_m = baselines_m[
