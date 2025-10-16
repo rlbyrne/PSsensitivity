@@ -39,13 +39,47 @@ def get_antpos(antpos_filepath):
     f.close()
 
     Nants = len(antpos_data) - 2
-    antpos = np.zeros((Nants, 2))
+    antpos = np.zeros((Nants, 2), dtype=float)
     for ant_ind, ant in enumerate(antpos_data[2:]):
         line = ant.split(" ")
         antpos[ant_ind, 0] = line[0]
         antpos[ant_ind, 1] = line[1]
 
     return antpos
+
+
+def get_antpos_from_txt(antpos_filepath):
+
+    f = open(antpos_filepath, "r")
+    antpos_data = f.readlines()
+    f.close()
+
+    Nants = len(antpos_data) - 1
+    antpos = np.zeros((Nants, 3))
+    for ant_ind, ant in enumerate(antpos_data[1:]):
+        line = ant.split(",")
+        antpos[ant_ind, 0] = line[1]
+        antpos[ant_ind, 1] = line[2]
+        antpos[ant_ind, 2] = line[3]
+
+    # Find the best fit plane for the points and rotate into that plane
+    antpos -= np.mean(antpos, axis=0)  # Center on the origin
+
+    # SVD of the covariance matrix
+    # The normal is the last singular vector
+    _, _, vh = np.linalg.svd(antpos)
+    normal = vh[-1]
+
+    # Compute rotation matrix
+    target = np.array([0, 0, 1])
+    v = np.cross(normal, target)
+    c = np.dot(normal, target)
+    s = np.linalg.norm(v)
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    R = np.eye(3) + vx + vx @ vx * ((1 - c) / s**2)
+    antpos = antpos @ R.T
+
+    return antpos[:, :2]
 
 
 def get_baselines(antpos):
@@ -349,7 +383,10 @@ def delay_ps_sensitivity_analysis(
     ps_variance = 4.0 * delay_visibility_variance**2.0
 
     if antpos is None:
-        antpos = get_antpos(antpos_filepath)
+        if antpos_filepath.endswith(".cfg"):
+            antpos = get_antpos(antpos_filepath)
+        else:
+            antpos = get_antpos_from_txt(antpos_filepath)
     baselines_m = get_baselines(antpos)
     if max_bl_m is not None:
         baselines_m = baselines_m[

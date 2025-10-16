@@ -6,21 +6,17 @@ c = 3e8
 min_freq_hz = 130e6  # z=10
 max_freq_hz = 250e6  # z=5
 freq_hz = np.mean([min_freq_hz, max_freq_hz])
+
 tsys_k = 50 * (c / freq_hz) ** (2.56)
-aperture_efficiency = 0.7
-# field_of_view_deg2 = 2830.0  # Approximately 60 deg FWHM
-antenna_diameter_m = (
-    c / freq_hz * np.sqrt(4 / (3 * np.pi * aperture_efficiency))
-)  # Let SEFD = wl^2/3 and calculate the equivalent antenna diameter
+
 freq_resolution_hz = 130.2e3
 int_time_s = 15.0 * 60  # 15 minutes in each survey field
-max_bl_m = None
 
-antpos_filepath = "W2-17.cfg"
+antpos_filepath = "array_layout_files/dsa1650_P305_v2.4.6_antenna_config.txt"
 wedge_ext = 90.0
 pointing_ang = 0.0
 
-antpos = array_sensitivity.get_antpos(antpos_filepath)
+antpos = array_sensitivity.get_antpos_from_txt(antpos_filepath)
 baselines_m = array_sensitivity.get_baselines(antpos)
 
 freq_array_hz = np.arange(min_freq_hz, max_freq_hz, freq_resolution_hz)
@@ -36,8 +32,8 @@ max_kperp = kperp_conv_factor * max_baseline_wl
 max_k = np.sqrt(max_kpar**2.0 + max_kperp**2.0)
 
 # Define bin edges:
-k_bin_size = 1
-min_k = 0
+k_bin_size = 0.1
+min_k = 0.02
 bin_edges = np.arange(min_k, max_k, k_bin_size)
 kpar_bin_edges = np.arange(0, max_kpar, k_bin_size)
 kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
@@ -54,11 +50,12 @@ kperp_bin_edges = np.arange(0, max_kperp, k_bin_size)
     min_freq_hz=min_freq_hz,
     max_freq_hz=max_freq_hz,
     tsys_k=tsys_k,
-    aperture_efficiency=aperture_efficiency,
-    antenna_diameter_m=antenna_diameter_m,
+    aperture_efficiency=None,
+    antenna_diameter_m=None,
+    dish_antenna=False,
     freq_resolution_hz=freq_resolution_hz,
     int_time_s=int_time_s,
-    max_bl_m=max_bl_m,
+    max_bl_m=None,
     k_bin_edges_1d=bin_edges,
     kpar_bin_edges=kpar_bin_edges,
     kperp_bin_edges=kperp_bin_edges,
